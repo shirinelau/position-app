@@ -136,12 +136,19 @@
             }
         ]
     }
-    function generateRandomTreasures(num) {
+    function generateRandomTreasures(num, userLat, userLng) {
         const newTreasures = []
         for (let i = 0; i < num; i++) {
-            const lng = 144.95 + Math.random() * 0.04 // Random generation of longitude
-            const lat = -37.81 + Math.random() * 0.03 // Random generation of latitude
-            newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
+            // Generate random treasure points in the neighborhood based on the user's current location
+            const lng = userLng + (Math.random() - 0.3) * 0.01
+            const lat = userLat + (Math.random() - 0.3) * 0.01
+
+            // Checking the validity of latitude and longitude
+            if (Number.isNaN(lng) || Number.isNaN(lat)) {
+                console.error(`Invalid treasure coordinates: ${lng}, ${lat}`)
+            } else {
+                newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
+            }
         }
         return newTreasures
     }
@@ -156,6 +163,10 @@
     }
 
     function checkForTreasure() {
+        if (!position.coords || Number.isNaN(position.coords.latitude) || Number.isNaN(position.coords.longitude)) {
+            console.error('Invalid user position, cannot check for treasure.')
+            return
+        }
         treasures.forEach((treasure) => {
             const distance = haversine(
                 position.coords.latitude,
@@ -233,6 +244,23 @@
                 bind:success
                 bind:error
                 let:notSupported
+                on:position={(e) => {
+                    const userPosition = e.detail // Get current user location
+                    console.log('Current User Location:', userPosition.coords)
+                    coords = [userPosition.coords.longitude, userPosition.coords.latitude]
+
+                    // Updates the marker for the user's current location on the map记
+                    markers = [
+                        ...markers,
+                        { lngLat: { lng: coords[0], lat: coords[1] }, label: 'Current', name: 'Current Position' }
+                    ]
+
+                    /// Generate treasure points that do not depend on success, but are generated directly after the location is fetched
+                    if (!treasures.length) { // Ensure that it is only generated once
+                        treasures = generateRandomTreasures(5, coords[1], coords[0])
+                        console.log('Generated Treasure:', treasures)
+                    }
+                }}
             >
                 <!-- If-else block syntax -->
                 {#if notSupported}
@@ -274,6 +302,10 @@
                 watch={true}
                 on:position={(e) => {
                     watchedPosition = e.detail
+                    console.log('Watching position:', watchedPosition.coords)
+
+                    // Check if the user is close to the treasure
+                    checkForTreasure()
                 }}
             />
 

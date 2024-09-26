@@ -1,6 +1,6 @@
 <!-- <script> tag includes JavaScript code -->
 <script>
-    console.log('Script is loaded!') // 确认脚本是否加载
+    console.log('Script is loaded!') // Verify that the script is loaded
     import { onMount } from 'svelte'
     import Geolocation from 'svelte-geolocation'
     import {
@@ -57,7 +57,7 @@
             name: 'This is a marker'
         }
     ]
-    let treasures = [] // 存储宝藏点
+    let treasures = [] // Storing Treasure Points
 
     // Extent of the map
     let bounds = getMapBounds(markers)
@@ -105,6 +105,21 @@
         }
     }
 
+    $: {
+        if (success) {
+            coords = [position.coords.longitude, position.coords.latitude]
+            checkForTreasure() // Check if the user is near the treasure
+            markers = [
+                ...markers,
+                {
+                    lngLat: { lng: coords[0], lat: coords[1] },
+                    label: 'Current',
+                    name: 'This is the current position',
+                }
+            ]
+        }
+    }
+
     /**
      * Declaring a function
      *
@@ -124,11 +139,35 @@
     function generateRandomTreasures(num) {
         const newTreasures = []
         for (let i = 0; i < num; i++) {
-            const lng = 144.95 + Math.random() * 0.04 // 随机生成经度
-            const lat = -37.81 + Math.random() * 0.03 // 随机生成纬度
+            const lng = 144.95 + Math.random() * 0.04 // Random generation of longitude
+            const lat = -37.81 + Math.random() * 0.03 // Random generation of latitude
             newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
         }
         return newTreasures
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371 // Radius of the Earth in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180
+        const dLon = (lon2 - lon1) * Math.PI / 180
+        const a
+            = 0.5 - Math.cos(dLat) / 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * (1 - Math.cos(dLon)) / 2
+        return R * 2 * Math.asin(Math.sqrt(a))
+    }
+
+    function checkForTreasure() {
+        treasures.forEach((treasure) => {
+            const distance = haversine(
+                position.coords.latitude,
+                position.coords.longitude,
+                treasure.lngLat.lat,
+                treasure.lngLat.lng
+            )
+            if (distance < 0.05 && !treasure.found) { // In 50 meters
+                treasure.found = true
+                proximityMessage(`Congratulations ${treasure.name} 🎉`)
+            }
+        })
     }
 
     /**
@@ -155,9 +194,9 @@
      * 'https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/melbourne.geojson'
      */
     onMount(async () => {
-        console.log('onMount is running!') // 检查 onMount 是否执行
-        treasures = generateRandomTreasures(5) // 生成 5 个随机宝藏点
-        console.log('Generated treasures:', treasures) // 打印生成的宝藏点
+        console.log('onMount is running!') // Check if onMount is executed
+        treasures = generateRandomTreasures(5) // Generate 5 random treasure spots
+        console.log('Generated treasures:', treasures) // Print Generated Treasure Points
         const response = await fetch('melbourne.geojson')
         geojsonData = await response.json()
     })

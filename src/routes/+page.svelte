@@ -58,6 +58,7 @@
         }
     ]
     let treasures = [] // Storing Treasure Points
+    let path = [] // storing the user's movement path
 
     // Extent of the map
     let bounds = getMapBounds(markers)
@@ -249,7 +250,7 @@
                     console.log('Current User Location:', userPosition.coords)
                     coords = [userPosition.coords.longitude, userPosition.coords.latitude]
 
-                    // Updates the marker for the user's current location on the map记
+                    // Updates the marker for the user's current location on the map
                     markers = [
                         ...markers,
                         { lngLat: { lng: coords[0], lat: coords[1] }, label: 'Current', name: 'Current Position' }
@@ -302,8 +303,10 @@
                 watch={true}
                 on:position={(e) => {
                     watchedPosition = e.detail
-                    console.log('Watching position:', watchedPosition.coords)
-
+                    const newCoords = [watchedPosition.coords.longitude, watchedPosition.coords.latitude]
+                    console.log('Watching position:', newCoords)
+                    // Add new coordinates to the path
+                    path = [...path, newCoords]
                     // Check if the user is close to the treasure
                     checkForTreasure()
                 }}
@@ -337,6 +340,12 @@
         bind:bounds
         zoom={14}
     >
+        <!-- Drawing user paths -->
+        <LineLayer
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': 'blue', 'line-width': 4 }}
+            coordinates={path}
+        />
         <!-- Custom control buttons -->
         <Control class="flex flex-col gap-y-2">
             <ControlGroup>

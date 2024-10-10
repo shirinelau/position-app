@@ -1,5 +1,6 @@
 <!-- <script> tag includes JavaScript code -->
 <script>
+    console.log('Script is loaded!') // 确认脚本是否加载
     import { onMount } from 'svelte'
     import Geolocation from 'svelte-geolocation'
     import {
@@ -64,6 +65,7 @@
             name: 'This is a new marker'
         }
     ]
+    let treasures = [] // 存储宝藏点
 
     // Extent of the map
     let bounds = getMapBounds(markers)
@@ -90,6 +92,7 @@
      * In this case: whenever success is set to true, a Position object
      * has been successfully obtained. Immediately update the relevant variables
      */
+
     $: {
         if (success || error) {
             // reset the flag
@@ -127,6 +130,15 @@
             }
         ]
     }
+    function generateRandomTreasures(num) {
+        const newTreasures = []
+        for (let i = 0; i < num; i++) {
+            const lng = 144.95 + Math.random() * 0.04 // 随机生成经度
+            const lat = -37.81 + Math.random() * 0.03 // 随机生成纬度
+            newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
+        }
+        return newTreasures
+    }
 
     /**
      * Variables can be initialised without a value and populated later
@@ -152,6 +164,9 @@
      * 'https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/melbourne.geojson'
      */
     onMount(async () => {
+        console.log('onMount is running!') // 检查 onMount 是否执行
+        treasures = generateRandomTreasures(5) // 生成 5 个随机宝藏点
+        console.log('Generated treasures:', treasures) // 打印生成的宝藏点
         const response = await fetch('melbourne.geojson')
         geojsonData = await response.json()
     })
@@ -252,6 +267,7 @@
     <!-- "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json" -->
     <!-- "https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json" -->
     <!-- "https://tiles.basemaps.cartocdn.com/gl/voyager-gl-style/style.json" -->
+    <!-- MapLibre initialization -->
     <MapLibre
         center={[144.97, -37.81]}
         class="map flex-grow min-h-[500px]"
@@ -260,6 +276,8 @@
         bind:bounds
         zoom={14}
     >
+        <!-- Other map components like markers, events, GeoJSON... -->
+
         <!-- Custom control buttons -->
         <Control class="flex flex-col gap-y-2">
             <ControlGroup>
@@ -316,6 +334,17 @@
         <!-- For-each loop syntax -->
         <!-- markers is an object, lngLat, label, name are the fields in the object -->
         <!-- i is the index, () indicates the unique ID for each item, duplicate IDs will lead to errors -->
+        {#each treasures as treasure (treasure.lngLat)}
+            <Marker lngLat={treasure.lngLat}>
+                <span
+                    class="marker"
+                    style="background-color: {treasure.found ? 'green' : 'red'};">
+                    💰
+                </span>
+                <Popup>{treasure.name}</Popup>
+            </Marker>
+        {/each}
+
         {#each markers as { lngLat, label, name }, i (i)}
             <Marker
                 {lngLat}

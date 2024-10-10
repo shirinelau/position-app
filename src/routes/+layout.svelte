@@ -23,9 +23,16 @@
     >
         About
     </a>
+    <!-- Test start -->
+    <a
+        class="btn btn-ghost text-xl"
+        href="{base}/about"
+    >
+        Test
+    </a>
+    <!-- Test end -->
 </div>
 
-<!-- Main content -->
 <!-- Content is inserted at <slot /> -->
 <!-- DoNotChange -->
 <main class="max-w-[1920px] container mx-auto pt-4">

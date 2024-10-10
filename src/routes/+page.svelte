@@ -1,6 +1,6 @@
 <!-- <script> tag includes JavaScript code -->
 <script>
-    console.log('Script is loaded!') // 确认脚本是否加载
+    console.log('Script is loaded!') // Verify that the script is loaded
     import { onMount } from 'svelte'
     import Geolocation from 'svelte-geolocation'
     import {
@@ -65,7 +65,8 @@
             name: 'This is a new marker'
         }
     ]
-    let treasures = [] // 存储宝藏点
+    let treasures = [] // Storing Treasure Points
+    let path = [] // storing the user's movement path
 
     // Extent of the map
     let bounds = getMapBounds(markers)
@@ -114,6 +115,21 @@
         }
     }
 
+    $: {
+        if (success) {
+            coords = [position.coords.longitude, position.coords.latitude]
+            checkForTreasure() // Check if the user is near the treasure
+            markers = [
+                ...markers,
+                {
+                    lngLat: { lng: coords[0], lat: coords[1] },
+                    label: 'Current',
+                    name: 'This is the current position',
+                }
+            ]
+        }
+    }
+
     /**
      * Declaring a function
      *
@@ -130,14 +146,49 @@
             }
         ]
     }
-    function generateRandomTreasures(num) {
+    function generateRandomTreasures(num, userLat, userLng) {
         const newTreasures = []
         for (let i = 0; i < num; i++) {
-            const lng = 144.95 + Math.random() * 0.04 // 随机生成经度
-            const lat = -37.81 + Math.random() * 0.03 // 随机生成纬度
-            newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
+            // Generate random treasure points in the neighborhood based on the user's current location
+            const lng = userLng + (Math.random() - 0.3) * 0.01
+            const lat = userLat + (Math.random() - 0.3) * 0.01
+
+            // Checking the validity of latitude and longitude
+            if (Number.isNaN(lng) || Number.isNaN(lat)) {
+                console.error(`Invalid treasure coordinates: ${lng}, ${lat}`)
+            } else {
+                newTreasures.push({ lngLat: { lng, lat }, found: false, name: `Treasure ${i + 1}` })
+            }
         }
         return newTreasures
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371 // Radius of the Earth in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180
+        const dLon = (lon2 - lon1) * Math.PI / 180
+        const a
+            = 0.5 - Math.cos(dLat) / 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * (1 - Math.cos(dLon)) / 2
+        return R * 2 * Math.asin(Math.sqrt(a))
+    }
+
+    function checkForTreasure() {
+        if (!position.coords || Number.isNaN(position.coords.latitude) || Number.isNaN(position.coords.longitude)) {
+            console.error('Invalid user position, cannot check for treasure.')
+            return
+        }
+        treasures.forEach((treasure) => {
+            const distance = haversine(
+                position.coords.latitude,
+                position.coords.longitude,
+                treasure.lngLat.lat,
+                treasure.lngLat.lng
+            )
+            if (distance < 0.05 && !treasure.found) { // In 50 meters
+                treasure.found = true
+                proximityMessage(`Congratulations ${treasure.name} 🎉`)
+            }
+        })
     }
 
     /**
@@ -164,9 +215,9 @@
      * 'https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/melbourne.geojson'
      */
     onMount(async () => {
-        console.log('onMount is running!') // 检查 onMount 是否执行
-        treasures = generateRandomTreasures(5) // 生成 5 个随机宝藏点
-        console.log('Generated treasures:', treasures) // 打印生成的宝藏点
+        console.log('onMount is running!') // Check if onMount is executed
+        treasures = generateRandomTreasures(5) // Generate 5 random treasure spots
+        console.log('Generated treasures:', treasures) // Print Generated Treasure Points
         const response = await fetch('melbourne.geojson')
         geojsonData = await response.json()
     })
@@ -203,6 +254,23 @@
                 bind:success
                 bind:error
                 let:notSupported
+                on:position={(e) => {
+                    const userPosition = e.detail // Get current user location
+                    console.log('Current User Location:', userPosition.coords)
+                    coords = [userPosition.coords.longitude, userPosition.coords.latitude]
+
+                    // Updates the marker for the user's current location on the map
+                    markers = [
+                        ...markers,
+                        { lngLat: { lng: coords[0], lat: coords[1] }, label: 'Current', name: 'Current Position' }
+                    ]
+
+                    /// Generate treasure points that do not depend on success, but are generated directly after the location is fetched
+                    if (!treasures.length) { // Ensure that it is only generated once
+                        treasures = generateRandomTreasures(5, coords[1], coords[0])
+                        console.log('Generated Treasure:', treasures)
+                    }
+                }}
             >
                 <!-- If-else block syntax -->
                 {#if notSupported}
@@ -244,6 +312,12 @@
                 watch={true}
                 on:position={(e) => {
                     watchedPosition = e.detail
+                    const newCoords = [watchedPosition.coords.longitude, watchedPosition.coords.latitude]
+                    console.log('Watching position:', newCoords)
+                    // Add new coordinates to the path
+                    path = [...path, newCoords]
+                    // Check if the user is close to the treasure
+                    checkForTreasure()
                 }}
             />
 
@@ -276,8 +350,6 @@
         bind:bounds
         zoom={14}
     >
-        <!-- Other map components like markers, events, GeoJSON... -->
-
         <!-- Custom control buttons -->
         <Control class="flex flex-col gap-y-2">
             <ControlGroup>

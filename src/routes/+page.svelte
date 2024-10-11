@@ -63,6 +63,14 @@
             },
             label: 'M4',
             name: 'This is a new marker'
+        },
+        {
+            lngLat: {
+                lng: 144.96,
+                lat: -37.82,
+            },
+            label: 'M5',
+            name: 'This is a new marker'
         }
     ]
     let treasures = [] // Storing Treasure Points
